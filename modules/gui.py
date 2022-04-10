@@ -71,7 +71,7 @@ class Gui:
         self.algorithmList = Parameter.create(name='ALGORYTM', type='list')
         self.algorithmList.setLimits({ "FALKI": 0, "ADAPTACYJNY" : 1, "EMD": 2})
         self.fuzzList = Parameter.create(name='ZASZUMIENIE', type='list')
-        self.fuzzList.setLimits({ "SZUM BIALY": 0, "50HZ" : 1, "50HZ + HARMONICZNE": 2,"50HZ + HARMONICZNE + SZUM BIALY": 3,"50HZ + SZUM BIALY" : 4 })
+        self.fuzzList.setLimits({ "SZUM BIALY": 0, "50HZ" : 1, "50HZ + HARMONICZNE": 2,"50HZ + HARMONICZNE + SZUM BIALY": 3,"50HZ + SZUM BIALY" : 4, "BRAK": 5 })
 
         self.param = Parameter.create(name='parameters', type='group', children=paramspec)
         self.param.addChild(self.algorithmList)
