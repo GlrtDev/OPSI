@@ -4,7 +4,6 @@ import pyqtgraph as pg
 from datetime import datetime
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from collections import OrderedDict
-channelInputRanges = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000]
 
 class Gui:
 
@@ -65,13 +64,14 @@ class Gui:
 
     def setupConf(self):        
         paramspec = [
-            dict(name='INDEKS PRÓBKI', type='int', readonly=False, value=0)
+            dict(name='INDEKS PROBKI', type='int', readonly=False, value=0),
+            dict(name='SNR', type='int', readonly=False, value=0)
             ]
 
         self.algorithmList = Parameter.create(name='ALGORYTM', type='list')
-        self.algorithmList.setLimits({ "APROKSYMACJA": 0, "MODEL AR" : 1, "TRZECI": 2})
+        self.algorithmList.setLimits({ "FALKI": 0, "ADAPTACYJNY" : 1, "EMD": 2})
         self.fuzzList = Parameter.create(name='ZASZUMIENIE', type='list')
-        self.fuzzList.setLimits({ "10%": 0, "YES2" : 1, "NO": 2})
+        self.fuzzList.setLimits({ "SZUM BIALY": 0, "50HZ" : 1, "50HZ + HARMONICZNE": 2,"50HZ + HARMONICZNE + SZUM BIALY": 3,"50HZ + SZUM BIALY" : 4 })
 
         self.param = Parameter.create(name='parameters', type='group', children=paramspec)
         self.param.addChild(self.algorithmList)
@@ -102,18 +102,18 @@ class Gui:
     def paramChange(self):
         self.plotConfUpdate()
 
-    def updatePlot(self, data):
-        self.curveTop.setData(x=data[0], y=data[1])
-        self.curveMiddle.setData(x=data[0], y=data[1])
-        self.curveBottom.setData(x=data[0], y=data[1])
+    def updatePlot(self, data: list): # data is list with x1,y1, x2,y2 etc.
+        self.curveTop.setData(data[0])
+        self.curveMiddle.setData(data[1])
+        self.curveBottom.setData(data[0]) # 2
         QtGui.QApplication.processEvents()
         
 
     #if btn clicked them -> settings Ready -> run program
-    def runExternalProgram(self, *args):
+    def runExternalProgram(self):
         if not self.programRuning:
             self.programRuning = 1
-            self.programRuning = self.extProgram(args)
+            self.programRuning = self.extProgram()
         else: 
             print("program is still running")
 
