@@ -11,7 +11,7 @@ class Scheduler:
         self.guiHandler.plotConf()
         self.guiHandler.setupConf()
 
-    def addNoise(self, signal=[np.zeros(10), np.zeros(10)], noiseType = 0, SNR=0.1):
+    def addNoise(self, signal=[np.zeros(10), np.zeros(10)], noiseType = 0, noiseStrength=0.1):
         noisedSignal = np.copy(signal)
         mean = 0
         std = 1
@@ -25,7 +25,7 @@ class Scheduler:
 
         if noiseType in [0,3,4]:
             whiteNoisePower = 1
-            whiteNoise = signalPtP * whiteNoisePower * np.random.normal(mean, std, size=num_samples)/SNR
+            whiteNoise = signalPtP * whiteNoisePower * np.random.normal(mean, std, size=num_samples) * noiseStrength
             whiteNoisePower = np.sqrt(np.mean(whiteNoise**2))
             noisedSignal[:,-1] += np.transpose(whiteNoise)
 
@@ -39,12 +39,12 @@ class Scheduler:
         
         if noiseType in [1,2,3,4]:
             for freq in PLIFrequencies:
-                frequencyNoise +=  signalPtP * PLIInterferencePower * np.sin(freq*2*np.pi*noisedSignal[:,0])/SNR
+                frequencyNoise +=  signalPtP * PLIInterferencePower * np.sin(freq*2*np.pi*noisedSignal[:,0])* noiseStrength
                 PLIInterferencePower *= 0.45 # TODO search for documentation that tells that every harmoniczna is weaker by 0.45
         noisedSignal[:,-1] +=  np.transpose(frequencyNoise)
 
         PLINoisePower = np.sqrt(np.mean(frequencyNoise**2))
-        print(f"\nSNR: {signalPower/(whiteNoisePower + PLINoisePower)}\n")
+        self.guiHandler.setParam("SNR", signalPower/(whiteNoisePower + PLINoisePower))
         return noisedSignal
     
     def run(self):
@@ -56,11 +56,11 @@ class Scheduler:
         #"SZUM BIAŁY": 0, "50HZ" : 1, "50HZ + HARMONICZNE": 2,"50HZ + HARMONICZNE + SZUM BIAŁY": 3,"50HZ + SZUM BIAŁY" : 4
         noiseType = self.guiHandler.getParam("ZASZUMIENIE") 
         # float
-        snr = self.guiHandler.getParam("SNR")
+        noiseStrength = self.guiHandler.getParam("NOISE STRENGTH")
         # indeks probki, int 
         sampleIndex = self.guiHandler.getParam("INDEKS PROBKI")
 
-        noisedSignal = self.addNoise(data, noiseType = noiseType, SNR=snr)
+        noisedSignal = self.addNoise(data, noiseType = noiseType, noiseStrength=noiseStrength)
 
         self.guiHandler.updatePlot([data, noisedSignal])
         PLIFrequencies=[50, 100, 150, 200, 250, 300]

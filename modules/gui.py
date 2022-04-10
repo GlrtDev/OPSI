@@ -65,7 +65,8 @@ class Gui:
     def setupConf(self):        
         paramspec = [
             dict(name='INDEKS PROBKI', type='int', readonly=False, value=0),
-            dict(name='SNR', type='int', readonly=False, value=0)
+            dict(name='SNR', type='float', readonly=True, value=0),
+            dict(name='NOISE STRENGTH', type='float', readonly=False, value=10)
             ]
 
         self.algorithmList = Parameter.create(name='ALGORYTM', type='list')
