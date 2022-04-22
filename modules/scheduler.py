@@ -69,5 +69,14 @@ class Scheduler:
         print(noisedSignal)
 
         self.guiHandler.updatePlot([signal, noisedSignal])
-        PLIFrequencies=[50, 100, 150, 200, 250, 300]
+        #PLIFrequencies=[50, 100, 150, 200, 250, 300]
 
+    def runCmd(self):
+        listOfFiles = ["samples/emg_healthy.txt"]
+        signals = list()
+        for file in listOfFiles:
+            signals.append(self.dataLoader.load(file))
+        
+        # TODO
+        # select all algorithm and noise types and check how good they are
+        # save results to csv
