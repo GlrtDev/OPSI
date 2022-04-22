@@ -11,15 +11,15 @@ class Scheduler:
         self.guiHandler.plotConf()
         self.guiHandler.setupConf()
 
-    def addNoise(self, signal=[np.zeros(10), np.zeros(10)], noiseType = 0, noiseStrength=0.1):
-        noisedSignal = np.copy(signal)
+    def generateNoise(self, signal=[np.zeros(10), np.zeros(10)], noiseType = 0, noiseStrength=0.1):
         mean = 0
         std = 1
         num_samples = signal.shape[0]  # idk if correct size is taken
         
+        noise = np.zeros(signal.shape)
         signalPtP = np.ptp(signal, axis=0)[1]
         signalPower = np.sqrt(np.mean(signal[:,-1]**2))
-
+        noise[:,0] = np.copy(signal[:,0])
         whiteNoisePower = 0
         PLINoisePower = 0
 
@@ -27,7 +27,7 @@ class Scheduler:
             whiteNoisePower = 1
             whiteNoise = signalPtP * whiteNoisePower * np.random.normal(mean, std, size=num_samples) * noiseStrength
             whiteNoisePower = np.sqrt(np.mean(whiteNoise**2))
-            noisedSignal[:,-1] += np.transpose(whiteNoise)
+            noise[:,-1] += np.transpose(whiteNoise)
 
         frequencyNoise = np.zeros(num_samples)
 
@@ -39,17 +39,21 @@ class Scheduler:
         
         if noiseType in [1,2,3,4]:
             for freq in PLIFrequencies:
-                frequencyNoise +=  signalPtP * PLIInterferencePower * np.sin(freq*2*np.pi*noisedSignal[:,0])* noiseStrength
+                frequencyNoise +=  signalPtP * PLIInterferencePower * np.sin(freq*2*np.pi*noise[:,0])* noiseStrength
                 PLIInterferencePower *= 0.45 # TODO search for documentation that tells that every harmoniczna is weaker by 0.45
-        noisedSignal[:,-1] +=  np.transpose(frequencyNoise)
+        noise[:,-1] +=  np.transpose(frequencyNoise)
 
-        PLINoisePower = np.sqrt(np.mean(frequencyNoise**2))
-        self.guiHandler.setParam("SNR", signalPower/(whiteNoisePower + PLINoisePower))
-        return noisedSignal
+        PLINoisePower = np.sqrt(np.mean(frequencyNoise**2)) #TODO RMS is really needed ?
+        self.guiHandler.setParam("SNR", (signalPower**2)/(whiteNoisePower + PLINoisePower)**2)
+        return noise
     
+    def addSignals(self, signal, signalToAdd):
+        newSignal = signal[:,-1] + signalToAdd[:,-1]
+        return newSignal
+
     def run(self):
-        data = self.dataLoader.load("samples/emg_healthy.txt")
-        #print(data)
+        signal = self.dataLoader.load("samples/emg_healthy.txt")
+        #print(signal)
         #print("\n\n")
         # falka 0, adap 1 , emd 2
         algorithm = self.guiHandler.getParam("ALGORYTM") 
@@ -60,8 +64,10 @@ class Scheduler:
         # indeks probki, int 
         sampleIndex = self.guiHandler.getParam("INDEKS PROBKI")
 
-        noisedSignal = self.addNoise(data, noiseType = noiseType, noiseStrength=noiseStrength)
+        noise = self.generateNoise(signal, noiseType = noiseType, noiseStrength=noiseStrength)
+        noisedSignal = self.addSignals(signal, noise)
+        print(noisedSignal)
 
-        self.guiHandler.updatePlot([data, noisedSignal])
+        self.guiHandler.updatePlot([signal, noisedSignal])
         PLIFrequencies=[50, 100, 150, 200, 250, 300]
 
