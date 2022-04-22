@@ -5,11 +5,12 @@ from modules.gui import Gui
 
 class Scheduler:
 
-    def __init__(self):
+    def __init__(self, mode):
         self.dataLoader = DataLoader()
-        self.guiHandler = Gui(self.run)
-        self.guiHandler.plotConf()
-        self.guiHandler.setupConf()
+        if mode == 0:
+            self.guiHandler = Gui(self.run)
+            self.guiHandler.plotConf()
+            self.guiHandler.setupConf()
 
     def generateNoise(self, signal=[np.zeros(10), np.zeros(10)], noiseType = 0, noiseStrength=0.1):
         mean = 0
@@ -76,7 +77,7 @@ class Scheduler:
         signals = list()
         for file in listOfFiles:
             signals.append(self.dataLoader.load(file))
-        
+        print("CMD START")
         # TODO
         # select all algorithm and noise types and check how good they are
         # save results to csv
