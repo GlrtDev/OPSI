@@ -1,4 +1,3 @@
-from isort import ImportKey
 from numpy.core.fromnumeric import size
 import numpy as np
 import time

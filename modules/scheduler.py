@@ -1,5 +1,5 @@
 import numpy as np
-from modules.emd import EMD
+from modules.emd import SchedulerEMD
 from modules.dataLoader import DataLoader
 from modules.gui import Gui
 
@@ -7,6 +7,7 @@ class Scheduler:
 
     def __init__(self, mode):
         self.dataLoader = DataLoader()
+        self.emd = SchedulerEMD()
         if mode == 0:
             self.guiHandler = Gui(self.run)
             self.guiHandler.plotConf()
@@ -64,7 +65,10 @@ class Scheduler:
         noiseStrength = self.guiHandler.getParam("NOISE STRENGTH")
         # indeks probki, int 
         sampleIndex = self.guiHandler.getParam("INDEKS PROBKI")
-
+        print(signal.shape)
+        if algorithm == 2:
+            self.emd.setStopConditions(fixe=5,fixe_h=4)
+            self.emd.decomposeAndGetIMFs(signal=[signal[:,1], signal[:,0]], mode="emd", verbose=True)
         noise = self.generateNoise(signal, noiseType = noiseType, noiseStrength=noiseStrength)
         noisedSignal = self.addSignals(signal, noise)
         print(noisedSignal)
