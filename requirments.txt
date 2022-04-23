@@ -1,0 +1,4 @@
+EMD-signal>=1.2.3
+numpy>=1.22.3
+pyqtgraph>=0.12.4
+PyQt6>=6.3.0
