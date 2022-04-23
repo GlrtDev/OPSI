@@ -2,6 +2,7 @@ from PyEMD import EMD, EEMD, CEEMDAN, Visualisation
 from enum import Enum
 from scipy import signal
 import numpy as np
+import pywt
 
 class EMDMode(Enum):
     EMD = 1
@@ -48,7 +49,7 @@ class SchedulerEMD:
         self.visualisation.plot_imfs(IFMs)
         self.visualisation.show()
             
-    def removePLIFromIFMs(self, IFMs):
+    def removePLIFromIFMs(self, IFMs,verbose = False):
         samp_freq = 4000  # Sample frequency (Hz)
         notch_freq = 50.0  # Frequency to be removed from signal (Hz)
         quality_factor = 5.0  # Quality factor
@@ -56,9 +57,31 @@ class SchedulerEMD:
         IFMsFiltered = np.copy(IFMs)
         i = 0
         for IFM in IFMs:
-            IFMsFiltered[i] = signal.filtfilt(b_notch, a_notch, IFM)
+            a = signal.filtfilt(b_notch, a_notch, IFM)
+            if (np.var(IFM-a)/np.var(IFM)) < 0.1:
+                IFMsFiltered[i] = IFM
+            else:
+                IFMsFiltered[i] = a
             i+=1
-        self.showIFMs(IFMsFiltered)
+        if verbose:
+            self.showIFMs(IFMsFiltered)
+        print(IFMs)
+        print(IFMsFiltered)
+        return IFMsFiltered
+
+    def removeWhiteNoiseFromIFMs(self, IFMs, thresholding = "hard", intervalThresholding = False, verbose = False):
+        IFMsFiltered = np.copy(IFMs)
+        i = 0
+        for IFM in IFMs:
+            noiseLevel = np.median(abs(IFM))/ 0.6745
+            threshold = noiseLevel * np.sqrt(2*np.log(IFM.shape[0]))
+            if thresholding == "hard":
+                IFMsFiltered[i] = (abs(IFM) > threshold) * IFM
+            elif thresholding == "soft":
+                IFMsFiltered[i] = pywt.threshold(IFM, threshold,'soft')
+            i+=1
+        if verbose:
+            self.showIFMs(IFMsFiltered)
         print(IFMs)
         print(IFMsFiltered)
         return IFMsFiltered
