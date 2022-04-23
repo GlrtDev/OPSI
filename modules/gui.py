@@ -106,7 +106,7 @@ class Gui:
     def updatePlot(self, data: list): # data is list with x1,y1, x2,y2 etc.
         self.curveTop.setData(data[0])
         self.curveMiddle.setData(data[1])
-        self.curveBottom.setData(data[0]) # 2
+        self.curveBottom.setData(data[2]) # 2
         QtGui.QApplication.processEvents()
         
 

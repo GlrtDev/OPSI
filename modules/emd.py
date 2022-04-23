@@ -1,5 +1,7 @@
 from PyEMD import EMD, EEMD, CEEMDAN, Visualisation
 from enum import Enum
+from scipy import signal
+import numpy as np
 
 class EMDMode(Enum):
     EMD = 1
@@ -39,11 +41,34 @@ class SchedulerEMD:
             IFMs = self.ceemdan.emd(signal[0],signal[1])
             self.visualisation = Visualisation(self.ceemdan)
         if verbose:
-            self.visualisation.plot_imfs(IFMs)
-            self.visualisation.show()
-            print("verbose")
+            self.showIFMs(IFMs)
         return IFMs
+
+    def showIFMs(self, IFMs):
+        self.visualisation.plot_imfs(IFMs)
+        self.visualisation.show()
             
+    def removePLIFromIFMs(self, IFMs):
+        samp_freq = 4000  # Sample frequency (Hz)
+        notch_freq = 50.0  # Frequency to be removed from signal (Hz)
+        quality_factor = 5.0  # Quality factor
+        b_notch, a_notch = signal.iirnotch(notch_freq, quality_factor,samp_freq)
+        IFMsFiltered = np.copy(IFMs)
+        i = 0
+        for IFM in IFMs:
+            IFMsFiltered[i] = signal.filtfilt(b_notch, a_notch, IFM)
+            i+=1
+        self.showIFMs(IFMsFiltered)
+        print(IFMs)
+        print(IFMsFiltered)
+        return IFMsFiltered
+    
+    def parseIFMsToSignal(self, originalSignal, IFMs):
+        signalToReturn = np.copy(originalSignal)
+        signalToReturn[:,-1] = np.zeros(originalSignal.shape[0])
+        for IFM in IFMs:
+            signalToReturn[:,-1] += IFM
+        return signalToReturn
 
     def denoise(self, signal):
         return signal

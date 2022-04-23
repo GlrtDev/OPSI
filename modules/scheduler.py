@@ -50,11 +50,13 @@ class Scheduler:
         return noise
     
     def addSignals(self, signal, signalToAdd):
-        newSignal = signal[:,-1] + signalToAdd[:,-1]
+        newSignal = np.copy(signal) 
+        newSignal[:,-1] += signalToAdd[:,-1]
         return newSignal
 
     def run(self):
         signal = self.dataLoader.load("samples/emg_healthy.txt")
+        denoisedSignal = [np.zeros(10), np.zeros(10)]
         #print(signal)
         #print("\n\n")
         # falka 0, adap 1 , emd 2
@@ -66,14 +68,18 @@ class Scheduler:
         # indeks probki, int 
         sampleIndex = self.guiHandler.getParam("INDEKS PROBKI")
         print(signal.shape)
-        if algorithm == 2:
-            self.emd.setStopConditions(fixe=5,fixe_h=4)
-            self.emd.decomposeAndGetIMFs(signal=[signal[:,1], signal[:,0]], mode="emd", verbose=True)
+        
         noise = self.generateNoise(signal, noiseType = noiseType, noiseStrength=noiseStrength)
         noisedSignal = self.addSignals(signal, noise)
-        print(noisedSignal)
-
-        self.guiHandler.updatePlot([signal, noisedSignal])
+        #print(signal)
+        #print(noise)
+        #print(noisedSignal)
+        if algorithm == 2:
+            self.emd.setStopConditions(fixe=5,fixe_h=4)
+            IFMs = self.emd.decomposeAndGetIMFs(signal=[noisedSignal[:,1], noisedSignal[:,0]], mode="emd", verbose=True)
+            filteredIFMs = self.emd.removePLIFromIFMs(IFMs)
+            denoisedSignal = self.emd.parseIFMsToSignal(originalSignal=signal, IFMs=filteredIFMs)
+        self.guiHandler.updatePlot([signal, noisedSignal, denoisedSignal])
         #PLIFrequencies=[50, 100, 150, 200, 250, 300]
 
     def runCmd(self):
