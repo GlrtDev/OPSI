@@ -1,21 +1,26 @@
-from pyqtgraph.Qt import QtGui, QtCore, QtWidgets
-import numpy as np
+from pyqtgraph.Qt import QtGui, QtWidgets
 import pyqtgraph as pg
 from datetime import datetime
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from collections import OrderedDict
 
-class Gui:
 
-    def __init__(self, extProgram, xWindowSize = 800, yWidnowSize = 600):
+class Gui:
+    def __init__(self, extProgram, xWindowSize=800, yWindowSize=600):
         pg.setConfigOption('background', 'w')
         pg.setConfigOption('foreground', 'k')   
         self.app = QtGui.QApplication([])
         self.win = pg.GraphicsWindow(title="Odszumianie sygnałów EMG")
-        self.win.resize(xWindowSize,yWidnowSize)
+        self.win.resize(xWindowSize, yWindowSize)
+        self.window = QtWidgets.QWidget()
+        self.layout = QtWidgets.QGridLayout()
+        self.runButton = QtGui.QPushButton('Start')
         self.win.show()
+        self.param = None
+        self.wavParam = None
+        self.scale = None
         self.extProgram = extProgram
-        self.programRuning = False
+        self.programRunning = False
 
     def saveState(self):
         try:
@@ -25,31 +30,29 @@ class Gui:
         except Exception as e:
             print(f"error {e} occured while saving state")
 
-
     def loadState(self):
         try:
             f = open("conf/savestate.dat", "r")
-            #print(f.read())
+            # print(f.read())
             self.param.restoreState(eval(f.read()))
         except Exception as e:
-            print(f"error {e} occured while loading state")
+            print(f"error {e} occurred while loading state")
 
     def plotConf(self):
         labels = {'left': "U [mV]", 'bottom': "time [ms]"}
-        self.topPlot = self.win.addPlot(title = "sygnał oryginalny", labels = labels,row=1, col=0)
-        self.middlePlot = self.win.addPlot(title = "sygnał zaszumiony", labels = labels,row=2, col=0)
-        self.bottomPlot = self.win.addPlot(title = "sygnał odszumiony", labels = labels,row=3, col=0)
+        self.topPlot = self.win.addPlot(title="sygnał oryginalny", labels=labels, row=1, col=0)
+        self.middlePlot = self.win.addPlot(title="sygnał zaszumiony", labels=labels, row=2, col=0)
+        self.bottomPlot = self.win.addPlot(title="sygnał odszumiony", labels=labels, row=3, col=0)
         self.curveTop = self.topPlot.plot(pen='b')
         self.curveMiddle = self.middlePlot.plot(pen='b')
         self.curveBottom = self.bottomPlot.plot(pen='b')
-        #self.curveTopRMS = self.topPlot.plot(pen='k')
+        # self.curveTopRMS = self.topPlot.plot(pen='k')
         self.plotConfUpdate()
 
     def plotConfUpdate(self):
         # TODO get the scale right
 
         # TODO show signals
-
         
         self.saveState()
 
@@ -70,25 +73,50 @@ class Gui:
             dict(name='EMD-IT', type='bool', readonly=False, value=False)
             ]
 
-        self.algorithmList = Parameter.create(name='ALGORYTM', type='list')
-        self.algorithmList.setLimits({ "FALKI": 0, "ADAPTACYJNY" : 1, "EMD": 2})
-        self.fuzzList = Parameter.create(name='ZASZUMIENIE', type='list')
-        self.fuzzList.setLimits({ "SZUM BIALY": 0, "50HZ" : 1, "50HZ + HARMONICZNE": 2,"50HZ + HARMONICZNE + SZUM BIALY": 3,"50HZ + SZUM BIALY" : 4, "BRAK": 5 })
+        algorithmList = Parameter.create(name='ALGORYTM', type='list')
+        algorithmList.setLimits({"DWT": 0,
+                                 "ADAPTACYJNY": 1,
+                                 "EMD": 2})
 
-        self.param = Parameter.create(name='parameters', type='group', children=paramspec)
-        self.param.addChild(self.algorithmList)
-        self.param.addChild(self.fuzzList)
+        fuzzList = Parameter.create(name='ZASZUMIENIE', type='list')
+        fuzzList.setLimits({"SZUM BIALY": 0,
+                            "50HZ": 1,
+                            "50HZ + HARMONICZNE": 2,
+                            "50HZ + HARMONICZNE + SZUM BIALY": 3,
+                            "50HZ + SZUM BIALY": 4,
+                            "BRAK": 5})
+
+        waveletsList = Parameter.create(name='RODZAJ FALEK', type='list')
+        waveletsList.setLimits({'bior1.1': 'bior1.1',
+                                'bior1.3': 'bior1.3',
+                                'bior3.3': 'bior3.3',
+                                'coif2': 'coif2',
+                                'coif6': 'coif6',
+                                'coif10': 'coif10',
+                                'db2': 'db2',
+                                'db4': 'db4',
+                                'db6': 'db6',
+                                'db8': 'db8',
+                                'haar': 'haar'})
+
+        decompositionLevelParam = dict(name='POZIOM DEKOMPOZYCJI', type='int', readonly=False, value=1)
+
+        self.param = Parameter.create(name='', type='group', children=paramspec)
+        self.param.addChild(algorithmList)
+        self.param.addChild(fuzzList)
+        # TODO SHOW WAVELET PARAMS ONLY WHEN DWT METHOD IS CHOSEN
+        self.param.addChild(waveletsList)
+        self.param.addChild(decompositionLevelParam)
+
         tree = ParameterTree()
         tree.setParameters(self.param)
-        self.window = QtWidgets.QWidget()
+
         self.window.setWindowTitle("OKNO KONFIGURACYJNE")
-        self.layout = QtWidgets.QGridLayout()
         self.window.setLayout(self.layout)
         l = QtWidgets.QLabel("KONFIGURACJA")
         self.layout.addWidget(l)
         self.layout.addWidget(tree)
 
-        self.runButton = QtGui.QPushButton('Start')
         self.runButton.clicked.connect(self.runExternalProgram)
         self.layout.addWidget(self.runButton)
 
@@ -97,25 +125,22 @@ class Gui:
         
         self.window.setGeometry(500, 500, 400, 500) 
         self.window.show()
-        
 
- # only new pack of date come into this, not full n finished buffer
-
+    # only new pack of date come into this, not full n finished buffer
     def paramChange(self):
         self.plotConfUpdate()
 
-    def updatePlot(self, data: list): # data is list with x1,y1, x2,y2 etc.
+    def updatePlot(self, data: list):  # data is list with x1,y1, x2,y2 etc.
         self.curveTop.setData(data[0])
         self.curveMiddle.setData(data[1])
-        self.curveBottom.setData(data[2]) # 2
+        self.curveBottom.setData(data[2])  # 2
         QtGui.QApplication.processEvents()
-        
 
-    #if btn clicked them -> settings Ready -> run program
+    # if btn clicked them -> settings Ready -> run program
     def runExternalProgram(self):
-        if not self.programRuning:
-            self.programRuning = 1
-            self.programRuning = self.extProgram()
+        if not self.programRunning:
+            self.programRunning = 1
+            self.programRunning = self.extProgram()
         else: 
             print("program is still running")
 
