@@ -65,8 +65,6 @@ class SchedulerEMD:
             i+=1
         if verbose:
             self.showIFMs(IFMsFiltered)
-        print(IFMs)
-        print(IFMsFiltered)
         return IFMsFiltered
 
     def removeWhiteNoiseFromIFMs(self, IFMs, thresholding = "hard", intervalThresholding = False, verbose = False):
@@ -75,15 +73,24 @@ class SchedulerEMD:
         for IFM in IFMs:
             noiseLevel = np.median(abs(IFM))/ 0.6745
             threshold = noiseLevel * np.sqrt(2*np.log(IFM.shape[0]))
-            if thresholding == "hard":
-                IFMsFiltered[i] = (abs(IFM) > threshold) * IFM
-            elif thresholding == "soft":
-                IFMsFiltered[i] = pywt.threshold(IFM, threshold,'soft')
+
+            if intervalThresholding:
+                zero_crossings = np.where(np.diff(np.sign(IFM)))[0]
+                IFMSplitted = np.hsplit(IFM, zero_crossings)
+                for IFMPart in IFMSplitted:
+                    if thresholding == "hard":
+                        IFMPart = pywt.threshold(IFMPart, threshold,'hard')
+                    elif thresholding == "soft":
+                        IFMPart = pywt.threshold(IFMPart, threshold,'soft')
+                IFMsFiltered[i] = np.concatenate(IFMSplitted)
+            else:
+                if thresholding == "hard":
+                    IFMsFiltered[i] = (abs(IFM) > threshold) * IFM
+                elif thresholding == "soft":
+                    IFMsFiltered[i] = pywt.threshold(IFM, threshold,'soft')
             i+=1
         if verbose:
             self.showIFMs(IFMsFiltered)
-        print(IFMs)
-        print(IFMsFiltered)
         return IFMsFiltered
     
     def parseIFMsToSignal(self, originalSignal, IFMs):

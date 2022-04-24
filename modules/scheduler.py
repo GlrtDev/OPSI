@@ -78,7 +78,7 @@ class Scheduler:
             self.emd.setStopConditions(fixe=5,fixe_h=4)
             IFMs = self.emd.decomposeAndGetIMFs(signal=[noisedSignal[:,1], noisedSignal[:,0]], mode="emd", verbose=False)
             #filteredIFMs = self.emd.removePLIFromIFMs(IFMs)
-            filteredIFMs = self.emd.removeWhiteNoiseFromIFMs(IFMs,thresholding="soft")
+            filteredIFMs = self.emd.removeWhiteNoiseFromIFMs(IFMs,thresholding="hard", intervalThresholding = True)
             denoisedSignal = self.emd.parseIFMsToSignal(originalSignal=signal, IFMs=filteredIFMs)
         self.guiHandler.updatePlot([signal, noisedSignal, denoisedSignal])
         #PLIFrequencies=[50, 100, 150, 200, 250, 300]
