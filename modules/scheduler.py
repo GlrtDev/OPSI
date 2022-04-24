@@ -37,10 +37,10 @@ class Scheduler:
 
         frequencyNoise = np.zeros(num_samples)
 
-        if noiseType in [1, 4]:
-            PLIFrequencies = [50]
-        else:
-            PLIFrequencies = [50, 100, 150, 200, 250, 300]
+        # if noiseType in [1, 4]:
+        PLIFrequencies = [50]
+        # else:
+        #     PLIFrequencies = [50, 100, 150, 200, 250, 300]
         PLIInterferencePower = 1.0
 
         if noiseType in [1, 2, 3, 4]:
@@ -48,6 +48,13 @@ class Scheduler:
                 frequencyNoise += signalPtP * PLIInterferencePower * np.sin(
                     freq * 2 * np.pi * noise[:, 0]) * noiseStrength
                 PLIInterferencePower *= 0.45  # TODO search for documentation that tells that every harmoniczna is weaker by 0.45
+        noise[:, -1] += np.transpose(frequencyNoise)
+
+        if noiseType in [2,3]:
+            freq = 0.1
+            frequencyNoise += signalPtP * 10.3 * PLIInterferencePower * np.sin(
+                freq * 2 * np.pi * noise[:, 0]) * noiseStrength
+            PLIInterferencePower *= 0.45  # TODO search for documentation that tells that every harmoniczna is weaker by 0.45
         noise[:, -1] += np.transpose(frequencyNoise)
 
         PLINoisePower = np.sqrt(np.mean(frequencyNoise ** 2))  # TODO RMS is really needed ?
@@ -91,13 +98,35 @@ class Scheduler:
 
             denoisedSignal = self.dwt.denoise(signal=noisedSignal[:, 1], wavelet=wavelet, level=level)
 
-        if algorithm == 2:
-            self.emd.setStopConditions(fixe=5, fixe_h=4)
-            IFMs = self.emd.decomposeAndGetIMFs(signal=[noisedSignal[:, 1], noisedSignal[:, 0]], mode="emd",
-                                                verbose=False)
-            # filteredIFMs = self.emd.removePLIFromIFMs(IFMs)
-            filteredIFMs = self.emd.removeWhiteNoiseFromIFMs(IFMs, thresholding="soft")
-            denoisedSignal = self.emd.parseIFMsToSignal(originalSignal=signal, IFMs=filteredIFMs)
+        if algorithm in [2,3,4]:
+            self.emd.setStopConditions(fixe=5)
+            IFMs = self.emd.decomposeAndGetIMFs(
+                signal=[noisedSignal[:, 1], noisedSignal[:, 0]],
+                mode=algorithm,
+                verbose=True
+                )
+
+            IFMsPLI = self.emd.removePLIFromIFMs(
+                IFMs, 
+                verbose=True
+                )
+
+            IFMsWN = self.emd.removeWhiteNoiseFromIFMs(
+                IFMsPLI, 
+                hardThresholding=self.guiHandler.getParam("HARD THRESHOLDING"), 
+                intervalThresholding=self.guiHandler.getParam("EMD-IT"), 
+                verbose=True
+                )
+
+            IFMsBW = self.emd.removeBaselineWanderFromIFMs(
+                IFMsWN, 
+                verbose=True
+                )
+
+            denoisedSignal = self.emd.parseIFMsToSignal(
+                originalSignal=signal, 
+                IFMs=IFMsBW
+                )
 
         self.guiHandler.updatePlot([signal, noisedSignal, denoisedSignal])
         # PLIFrequencies=[50, 100, 150, 200, 250, 300]

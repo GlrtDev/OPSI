@@ -1,3 +1,4 @@
+from concurrent.futures import process
 from PyEMD import EMD, EEMD, CEEMDAN, Visualisation
 from enum import Enum
 from scipy import signal
@@ -13,9 +14,9 @@ class EMDMode(Enum):
 
 class SchedulerEMD:
     def __init__(self) -> None:
-        self.emd = EMD()
-        self.eemd = EEMD()
-        self.ceemdan = CEEMDAN()
+        self.emd = EMD(parallel=True, process=3)
+        self.eemd = EEMD(parallel=True, process=3)
+        self.ceemdan = CEEMDAN(parallel=True, process=3)
         self.visualisation = Visualisation()
 
     def setStopConditions(self, fixe=0, fixe_h=0):
@@ -31,15 +32,15 @@ class SchedulerEMD:
         """
         self.emd.FIXE_H = fixe_h
 
-    def decomposeAndGetIMFs(self, signal, mode="emd", verbose=False):
-        if mode == "emd":
-            IFMs = self.emd.emd(signal[0], signal[1])
+    def decomposeAndGetIMFs(self, signal, mode=2, verbose=False):
+        if mode == 2:
+            IFMs = self.emd.emd(signal[0], signal[1], max_imf=9)
             self.visualisation = Visualisation(self.emd)
-        elif mode == "eemd":
-            IFMs = self.eemd.emd(signal[0], signal[1])
+        elif mode == 3:
+            IFMs = self.eemd.eemd(signal[0], signal[1], max_imf=9)
             self.visualisation = Visualisation(self.eemd)
-        elif mode == "ceemdan":
-            IFMs = self.ceemdan.emd(signal[0], signal[1])
+        elif mode == 4:
+            IFMs = self.ceemdan.ceemdan(signal[0], signal[1], max_imf=9)
             self.visualisation = Visualisation(self.ceemdan)
         if verbose:
             self.showIFMs(IFMs)
@@ -67,31 +68,62 @@ class SchedulerEMD:
             self.showIFMs(IFMsFiltered)
         return IFMsFiltered
 
-    def removeWhiteNoiseFromIFMs(self, IFMs, thresholding="hard", verbose=False, intervalThresholding=False):
+    def removeWhiteNoiseFromIFMs(self, IFMs, hardThresholding=False,
+                                verbose=False, intervalThresholding=False):
         IFMsFiltered = np.copy(IFMs)
         i = 0
         for IFM in IFMs:
             noiseLevel = np.median(abs(IFM))/ 0.6745
-            threshold = noiseLevel * np.sqrt(2*np.log(IFM.shape[0]))
-
+            threshold = noiseLevel * np.sqrt(2 * np.log(IFM.shape[0]))
             if intervalThresholding:
                 zero_crossings = np.where(np.diff(np.sign(IFM)))[0]
                 IFMSplitted = np.hsplit(IFM, zero_crossings)
+                j = 0
                 for IFMPart in IFMSplitted:
-                    if thresholding == "hard":
-                        IFMPart = pywt.threshold(IFMPart, threshold,'hard')
-                    elif thresholding == "soft":
-                        IFMPart = pywt.threshold(IFMPart, threshold,'soft')
+                    if hardThresholding:
+                        IFMSplitted[j] = pywt.threshold(IFMPart, threshold,'hard')
+                    elif not hardThresholding:
+                        IFMSplitted[j] = pywt.threshold(IFMPart, threshold,'soft')
+                    j += 1
                 IFMsFiltered[i] = np.concatenate(IFMSplitted)
             else:
-                if thresholding == "hard":
+                if hardThresholding:
+                    #IFMsFiltered[i] = pywt.threshold(IFM, threshold,'hard')
                     IFMsFiltered[i] = (abs(IFM) > threshold) * IFM
-                elif thresholding == "soft":
+                elif not hardThresholding:
                     IFMsFiltered[i] = pywt.threshold(IFM, threshold,'soft')
             i+=1
         if verbose:
             self.showIFMs(IFMsFiltered)
         return IFMsFiltered
+
+    def removeBaselineWanderFromIFMs(self, IFMs, verbose=False):
+        IFMsFiltered = np.copy(IFMs)
+        N = IFMs.shape[0]
+        d = list() #d is filtered IFM
+        b = list() #b is baselineWander component
+        omega0 = 30
+        M = 1.02
+        i = 0
+        for IFM in IFMs:
+            cutOffFrequence = (omega0 / (M**(N-i)))
+            d.append(self.butter_lowpass_filter(IFM, cutOffFrequence))
+            threshold = np.var(d[i]) / np.var(IFM)
+            if threshold < 0.05:
+                b.append(np.zeros(IFM.shape))
+            elif threshold <= 0.5:
+                b.append(d[i])
+            else:
+                b.append(IFM)
+            i += 1
+        i = 0 
+        for IFM in IFMs:
+            IFMsFiltered[i] = IFM - b[i]
+        if verbose:
+            #self.showIFMs(np.array(b))
+            self.showIFMs(IFMsFiltered)
+        return IFMsFiltered
+            
 
     def parseIFMsToSignal(self, originalSignal, IFMs):
         signalToReturn = np.copy(originalSignal)
@@ -100,5 +132,10 @@ class SchedulerEMD:
             signalToReturn[:, -1] += IFM
         return signalToReturn
 
-    def denoise(self, signal):
-        return signal
+    def butter_lowpass(self, cutoff, fs=4000, order=5):
+        return signal.butter(order, cutoff, fs=fs, btype='low', analog=False)
+
+    def butter_lowpass_filter(self,data, cutoff, fs=4000, order=5):
+        b, a = self.butter_lowpass(cutoff, fs, order=order)
+        y = signal.lfilter(b, a, data)
+        return y

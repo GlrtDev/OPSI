@@ -70,19 +70,22 @@ class Gui:
             dict(name='INDEKS PROBKI', type='int', readonly=False, value=0),
             dict(name='SNR', type='float', readonly=True, value=0),
             dict(name='NOISE STRENGTH', type='float', readonly=False, value=10),
-            dict(name='EMD-IT', type='bool', readonly=False, value=False)
+            dict(name='EMD-IT', type='bool', readonly=False, value=False),
+            dict(name='HARD THRESHOLDING', type='bool', readonly=False, value=False)
             ]
 
         algorithmList = Parameter.create(name='ALGORYTM', type='list')
         algorithmList.setLimits({"DWT": 0,
                                  "ADAPTACYJNY": 1,
-                                 "EMD": 2})
+                                 "EMD": 2,
+                                 "EEMD": 3,
+                                 "CEEMDAN": 4})
 
         fuzzList = Parameter.create(name='ZASZUMIENIE', type='list')
         fuzzList.setLimits({"SZUM BIALY": 0,
                             "50HZ": 1,
-                            "50HZ + HARMONICZNE": 2,
-                            "50HZ + HARMONICZNE + SZUM BIALY": 3,
+                            "50HZ + DRYFT LINIJ BAZOWEJ": 2,
+                            "50HZ + DRYFT LINIJ BAZOWEJ + SZUM BIALY": 3,
                             "50HZ + SZUM BIALY": 4,
                             "BRAK": 5})
 
