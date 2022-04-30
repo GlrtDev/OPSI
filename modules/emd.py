@@ -18,6 +18,16 @@ class SchedulerEMD:
         self.eemd = EEMD(parallel=True, process=3)
         self.ceemdan = CEEMDAN(parallel=True, process=3)
         self.visualisation = Visualisation()
+        self.sampleFreq = 4000
+
+    def denoise(self, signal, mode , fixe=0, hardThresholding=False, varLevelActivation = 0.1, omega0 = 30, M = 1.02 ):
+        self.setStopConditions(fixe=fixe)
+        noisedSignal=[signal[:, 1], signal[:, 0]]
+        step1 = self.decomposeAndGetIMFs(noisedSignal, mode)
+        step2 = self.removePLIFromIFMs(step1, varLevelActivation=varLevelActivation)
+        step3 = self.removeWhiteNoiseFromIFMs(step2, hardThresholding=hardThresholding)
+        step4 = self.removeBaselineWanderFromIFMs(step3, omega0=omega0, M=M)
+        return self.parseIFMsToSignal(signal,step4)
 
     def setStopConditions(self, fixe=0, fixe_h=0):
         """ All methods have the same two conditions, FIXE and FIXE_H,
@@ -33,6 +43,7 @@ class SchedulerEMD:
         self.emd.FIXE_H = fixe_h
 
     def decomposeAndGetIMFs(self, signal, mode=2, verbose=False):
+        self.sampleFreq = np.floor(1/signal[1][0])
         if mode == 2:
             IFMs = self.emd.emd(signal[0], signal[1], max_imf=9)
             self.visualisation = Visualisation(self.emd)
@@ -50,8 +61,9 @@ class SchedulerEMD:
         self.visualisation.plot_imfs(IFMs)
         self.visualisation.show()
 
-    def removePLIFromIFMs(self, IFMs, verbose=False):
-        samp_freq = 4000  # Sample frequency (Hz)
+    def removePLIFromIFMs(self, IFMs, verbose=False, varLevelActivation = 0.1):
+        samp_freq = self.sampleFreq  # Sample frequency (Hz)
+        
         notch_freq = 50.0  # Frequency to be removed from signal (Hz)
         quality_factor = 5.0  # Quality factor
         b_notch, a_notch = signal.iirnotch(notch_freq, quality_factor, samp_freq)
@@ -59,7 +71,7 @@ class SchedulerEMD:
         i = 0
         for IFM in IFMs:
             a = signal.filtfilt(b_notch, a_notch, IFM)
-            if (np.var(IFM - a) / np.var(IFM)) < 0.1:
+            if (np.var(IFM - a) / np.var(IFM)) < varLevelActivation:
                 IFMsFiltered[i] = IFM
             else:
                 IFMsFiltered[i] = a
@@ -97,28 +109,30 @@ class SchedulerEMD:
             self.showIFMs(IFMsFiltered)
         return IFMsFiltered
 
-    def removeBaselineWanderFromIFMs(self, IFMs, verbose=False):
+    def removeBaselineWanderFromIFMs(self, IFMs, verbose=False, omega0 = 30, M = 1.02):
         IFMsFiltered = np.copy(IFMs)
         N = IFMs.shape[0]
         d = list() #d is filtered IFM
         b = list() #b is baselineWander component
-        omega0 = 30
-        M = 1.02
-        i = 0
+        i = 0 
         for IFM in IFMs:
             cutOffFrequence = (omega0 / (M**(N-i)))
-            d.append(self.butter_lowpass_filter(IFM, cutOffFrequence))
-            threshold = np.var(d[i]) / np.var(IFM)
+            d = (self.butter_lowpass_filter(IFM, cutOffFrequence))
+            if(np.var(IFM)>0):
+                threshold = np.var(d) / np.var(IFM)
+            else:
+                threshold = 1
             if threshold < 0.05:
                 b.append(np.zeros(IFM.shape))
             elif threshold <= 0.5:
-                b.append(d[i])
+                b.append(d)
             else:
                 b.append(IFM)
-            i += 1
+            i+=1
         i = 0 
         for IFM in IFMs:
             IFMsFiltered[i] = IFM - b[i]
+            i+=1
         if verbose:
             #self.showIFMs(np.array(b))
             self.showIFMs(IFMsFiltered)
@@ -132,10 +146,10 @@ class SchedulerEMD:
             signalToReturn[:, -1] += IFM
         return signalToReturn
 
-    def butter_lowpass(self, cutoff, fs=4000, order=5):
+    def butter_lowpass(self, cutoff, fs, order=5):
         return signal.butter(order, cutoff, fs=fs, btype='low', analog=False)
 
-    def butter_lowpass_filter(self,data, cutoff, fs=4000, order=5):
-        b, a = self.butter_lowpass(cutoff, fs, order=order)
+    def butter_lowpass_filter(self, data, cutoff, order=5):
+        b, a = self.butter_lowpass(cutoff, self.sampleFreq, order=order)
         y = signal.lfilter(b, a, data)
         return y

@@ -1,4 +1,7 @@
+from distutils.log import error
+from itertools import count
 import numpy as np
+import csv
 from modules.emd import SchedulerEMD
 from modules.dataLoader import DataLoader
 from modules.gui import Gui
@@ -10,7 +13,8 @@ class Scheduler:
         self.dataLoader = DataLoader()
         self.emd = SchedulerEMD()
         self.dwt = DWT()
-        if mode == 0:
+        self.mode = mode
+        if self.mode == 0:
             self.guiHandler = Gui(self.run)
             self.guiHandler.plotConf()
             self.guiHandler.setupConf()
@@ -43,32 +47,34 @@ class Scheduler:
         #     PLIFrequencies = [50, 100, 150, 200, 250, 300]
         PLIInterferencePower = 1.0
 
+        #PLI noise
         if noiseType in [1, 2, 3, 4]:
             for freq in PLIFrequencies:
                 frequencyNoise += signalPtP * PLIInterferencePower * np.sin(
                     freq * 2 * np.pi * noise[:, 0]) * noiseStrength
-                PLIInterferencePower *= 0.45  # TODO search for documentation that tells that every harmoniczna is weaker by 0.45
         noise[:, -1] += np.transpose(frequencyNoise)
 
+
+        #baseline wandering
         if noiseType in [2,3]:
             freq = 0.1
             frequencyNoise += signalPtP * 10.3 * PLIInterferencePower * np.sin(
                 freq * 2 * np.pi * noise[:, 0]) * noiseStrength
-            PLIInterferencePower *= 0.45  # TODO search for documentation that tells that every harmoniczna is weaker by 0.45
         noise[:, -1] += np.transpose(frequencyNoise)
 
         PLINoisePower = np.sqrt(np.mean(frequencyNoise ** 2))  # TODO RMS is really needed ?
-        self.guiHandler.setParam("SNR", (signalPower ** 2) / (whiteNoisePower + PLINoisePower) ** 2)
-        return noise
+        if self.mode == 0:
+            self.guiHandler.setParam("SNR", (signalPower ** 2) / (whiteNoisePower + PLINoisePower) ** 2)
+            return noise
+        else:
+            SNR = (signalPower ** 2) / (whiteNoisePower + PLINoisePower) ** 2
+            return noise, SNR
 
-    @staticmethod
-    def addSignals(signal, signalToAdd):
-        newSignal = np.copy(signal)
-        newSignal[:, -1] += signalToAdd[:, -1]
-        return newSignal
+
 
     def run(self):
         signal = self.dataLoader.load("samples/emg_healthy.txt")
+        print(signal.shape)
         denoisedSignal = [np.zeros(10), np.zeros(10)]
 
         # "FALKI": 0
@@ -78,8 +84,8 @@ class Scheduler:
 
         # "SZUM BIAŁY": 0
         # "50HZ" : 1
-        # "50HZ + HARMONICZNE": 2
-        # "50HZ + HARMONICZNE + SZUM BIAŁY": 3
+        # "50HZ + DRYFT": 2
+        # "50HZ + DRYFT + SZUM BIAŁY": 3
         # "50HZ + SZUM BIAŁY" : 4
         noiseType = self.guiHandler.getParam("ZASZUMIENIE")
 
@@ -137,6 +143,58 @@ class Scheduler:
         for file in listOfFiles:
             signals.append(self.dataLoader.load(file))
         print("CMD START")
-        # TODO
-        # select all algorithm and noise types and check how good they are
-        # save results to csv
+
+        f = open('data.csv', 'w', newline="")
+        writer = csv.writer(f)
+        header = ['SNR','mode', 'fixe', 'hardThresholding', 'varLevelActivation', 'omega 0', 'M', 'error']
+        
+        writer.writerow(header)
+        i = 0
+        fixeRange = range(2,10,1)
+        thresholdRange = [True, False]
+        varActivRange = np.arange(0.01,0.011,0.001)
+        omega0Range = np.arange(10,100,10)
+        MRange = np.arange(1,1.01,0.05)
+        maxIterations = len(fixeRange) * len(thresholdRange) * varActivRange.size * omega0Range.size * MRange.size -1
+
+        for signal in signals:
+            noise, SNR = self.generateNoise(signal, noiseType=0, noiseStrength=0.005)
+            noisedSignal = self.addSignals(signal, noise)
+
+            
+            for fixe in fixeRange:
+                for mode in [2]:
+                    for hardThresholding in thresholdRange:
+                        for varLevelActivation in varActivRange:
+                            for omega0 in omega0Range:
+                                for M in MRange:
+                                    denoisedSignal = self.emd.denoise(
+                                        signal=noisedSignal,
+                                        mode=mode,
+                                        fixe=fixe,
+                                        hardThresholding=hardThresholding,
+                                        varLevelActivation=varLevelActivation,
+                                        omega0=omega0,
+                                        M=M
+                                        )
+                                    print(f"{i}/{maxIterations}")
+                                    row = [SNR, mode, fixe, hardThresholding, varLevelActivation, omega0, M, self.countError(signal, denoisedSignal)]
+                                    writer.writerow(row)
+                                    i+=1
+        
+        f.close()
+                                    
+
+    @staticmethod
+    def countError(originalSignal, denoisedSignal, mode = 2):
+        if mode == 2:
+            errors = np.copy(originalSignal)
+            errors[:, -1] -= denoisedSignal[:, -1]
+            return np.mean(errors[:, -1] ** 2)
+
+
+    @staticmethod
+    def addSignals(signal, signalToAdd):
+        newSignal = np.copy(signal)
+        newSignal[:, -1] += signalToAdd[:, -1]
+        return newSignal
