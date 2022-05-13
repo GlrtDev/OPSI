@@ -71,7 +71,8 @@ class Gui:
             dict(name='SNR', type='float', readonly=True, value=0),
             dict(name='NOISE STRENGTH', type='float', readonly=False, value=10),
             dict(name='EMD-IT', type='bool', readonly=False, value=False),
-            dict(name='HARD THRESHOLDING', type='bool', readonly=False, value=False)
+            dict(name='HARD THRESHOLDING', type='bool', readonly=False, value=False),
+            dict(name='KROK ADAPTACJI', type='float', readonly=False, value=0.1),
             ]
 
         algorithmList = Parameter.create(name='ALGORYTM', type='list')
@@ -99,8 +100,7 @@ class Gui:
                                 'db2': 'db2',
                                 'db4': 'db4',
                                 'db6': 'db6',
-                                'db8': 'db8',
-                                'haar': 'haar'})
+                                'db8': 'db8'})
 
         decompositionLevelParam = dict(name='POZIOM DEKOMPOZYCJI', type='int', readonly=False, value=1)
 

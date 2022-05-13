@@ -6,6 +6,7 @@ from modules.emd import SchedulerEMD
 from modules.dataLoader import DataLoader
 from modules.gui import Gui
 from modules.dwt import DWT
+from modules.adaptiveFilter import AdaptiveFilterLMS
 
 
 class Scheduler:
@@ -13,6 +14,7 @@ class Scheduler:
         self.dataLoader = DataLoader()
         self.emd = SchedulerEMD()
         self.dwt = DWT()
+        self.adaptiveFilter = AdaptiveFilterLMS()
         self.mode = mode
         if self.mode == 0:
             self.guiHandler = Gui(self.run)
@@ -47,16 +49,15 @@ class Scheduler:
         #     PLIFrequencies = [50, 100, 150, 200, 250, 300]
         PLIInterferencePower = 1.0
 
-        #PLI noise
+        # PLI noise
         if noiseType in [1, 2, 3, 4]:
             for freq in PLIFrequencies:
                 frequencyNoise += signalPtP * PLIInterferencePower * np.sin(
                     freq * 2 * np.pi * noise[:, 0]) * noiseStrength
         noise[:, -1] += np.transpose(frequencyNoise)
 
-
-        #baseline wandering
-        if noiseType in [2,3]:
+        # baseline wandering
+        if noiseType in [2, 3]:
             freq = 0.1
             frequencyNoise += signalPtP * 10.3 * PLIInterferencePower * np.sin(
                 freq * 2 * np.pi * noise[:, 0]) * noiseStrength
@@ -70,11 +71,8 @@ class Scheduler:
             SNR = (signalPower ** 2) / (whiteNoisePower + PLINoisePower) ** 2
             return noise, SNR
 
-
-
     def run(self):
         signal = self.dataLoader.load("samples/emg_healthy.txt")
-        print(signal.shape)
         denoisedSignal = [np.zeros(10), np.zeros(10)]
 
         # "FALKI": 0
@@ -104,35 +102,43 @@ class Scheduler:
 
             denoisedSignal = self.dwt.denoise(signal=noisedSignal[:, 1], wavelet=wavelet, level=level)
 
-        if algorithm in [2,3,4]:
+        if algorithm == 1:
+            learningRate = self.guiHandler.getParam("KROK ADAPTACJI")
+
+            denoisedSignal = self.adaptiveFilter.denoise(
+                x=noisedSignal,
+                mu=learningRate,
+                d=noise)  # ??????????????????
+
+        if algorithm in [2, 3, 4]:
             self.emd.setStopConditions(fixe=5)
             IFMs = self.emd.decomposeAndGetIMFs(
                 signal=[noisedSignal[:, 1], noisedSignal[:, 0]],
                 mode=algorithm,
                 verbose=True
-                )
+            )
 
             IFMsPLI = self.emd.removePLIFromIFMs(
-                IFMs, 
+                IFMs,
                 verbose=True
-                )
+            )
 
             IFMsWN = self.emd.removeWhiteNoiseFromIFMs(
-                IFMsPLI, 
-                hardThresholding=self.guiHandler.getParam("HARD THRESHOLDING"), 
-                intervalThresholding=self.guiHandler.getParam("EMD-IT"), 
+                IFMsPLI,
+                hardThresholding=self.guiHandler.getParam("HARD THRESHOLDING"),
+                intervalThresholding=self.guiHandler.getParam("EMD-IT"),
                 verbose=True
-                )
+            )
 
             IFMsBW = self.emd.removeBaselineWanderFromIFMs(
-                IFMsWN, 
+                IFMsWN,
                 verbose=True
-                )
+            )
 
             denoisedSignal = self.emd.parseIFMsToSignal(
-                originalSignal=signal, 
+                originalSignal=signal,
                 IFMs=IFMsBW
-                )
+            )
 
         self.guiHandler.updatePlot([signal, noisedSignal, denoisedSignal])
         # PLIFrequencies=[50, 100, 150, 200, 250, 300]
@@ -146,22 +152,21 @@ class Scheduler:
 
         f = open('data.csv', 'w', newline="")
         writer = csv.writer(f)
-        header = ['SNR','mode', 'fixe', 'hardThresholding', 'varLevelActivation', 'omega 0', 'M', 'error']
-        
+        header = ['SNR', 'mode', 'fixe', 'hardThresholding', 'varLevelActivation', 'omega 0', 'M', 'error']
+
         writer.writerow(header)
         i = 0
-        fixeRange = range(2,10,1)
+        fixeRange = range(2, 10, 1)
         thresholdRange = [True, False]
-        varActivRange = np.arange(0.01,0.011,0.001)
-        omega0Range = np.arange(10,100,10)
-        MRange = np.arange(1,1.01,0.05)
-        maxIterations = len(fixeRange) * len(thresholdRange) * varActivRange.size * omega0Range.size * MRange.size -1
+        varActivRange = np.arange(0.01, 0.011, 0.001)
+        omega0Range = np.arange(10, 100, 10)
+        MRange = np.arange(1, 1.01, 0.05)
+        maxIterations = len(fixeRange) * len(thresholdRange) * varActivRange.size * omega0Range.size * MRange.size - 1
 
         for signal in signals:
             noise, SNR = self.generateNoise(signal, noiseType=0, noiseStrength=0.005)
             noisedSignal = self.addSignals(signal, noise)
 
-            
             for fixe in fixeRange:
                 for mode in [2]:
                     for hardThresholding in thresholdRange:
@@ -176,22 +181,21 @@ class Scheduler:
                                         varLevelActivation=varLevelActivation,
                                         omega0=omega0,
                                         M=M
-                                        )
+                                    )
                                     print(f"{i}/{maxIterations}")
-                                    row = [SNR, mode, fixe, hardThresholding, varLevelActivation, omega0, M, self.countError(signal, denoisedSignal)]
+                                    row = [SNR, mode, fixe, hardThresholding, varLevelActivation, omega0, M,
+                                           self.countError(signal, denoisedSignal)]
                                     writer.writerow(row)
-                                    i+=1
-        
+                                    i += 1
+
         f.close()
-                                    
 
     @staticmethod
-    def countError(originalSignal, denoisedSignal, mode = 2):
+    def countError(originalSignal, denoisedSignal, mode=2):
         if mode == 2:
             errors = np.copy(originalSignal)
             errors[:, -1] -= denoisedSignal[:, -1]
             return np.mean(errors[:, -1] ** 2)
-
 
     @staticmethod
     def addSignals(signal, signalToAdd):
