@@ -11,5 +11,5 @@ class DataLoader:
 
     @staticmethod
     def load(path):
-        data = np.loadtxt(path, dtype=float, delimiter=' ')
+        data = np.loadtxt(path, dtype=float)
         return data

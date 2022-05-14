@@ -69,8 +69,9 @@ class Gui:
         paramspec = [
             dict(name='INDEKS PROBKI', type='int', readonly=False, value=0),
             dict(name='SNR', type='float', readonly=True, value=0),
-            dict(name='NOISE STRENGTH', type='float', readonly=False, value=10),
+            dict(name='NOISE STRENGTH', type='float', readonly=False, value=0.05),
             dict(name='EMD-IT', type='bool', readonly=False, value=False),
+            dict(name='FIXE', type='int', readonly=False, value=2),
             dict(name='HARD THRESHOLDING', type='bool', readonly=False, value=False),
             dict(name='KROK ADAPTACJI', type='float', readonly=False, value=0.1),
             ]
