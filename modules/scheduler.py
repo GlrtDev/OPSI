@@ -267,15 +267,15 @@ class Scheduler:
         emdCsv = csv.reader(f3)
         adapResultsList = sorted(emdCsv, key=lambda row: row[3], reverse=False)
         print(f"\nBest EMD parameters:")
-        for name, param in zip(emdResultsList[0], emdResultsList[1]):
+        for name, param in zip(emdResultsList[-1], emdResultsList[1]):
             print(f"{name} : {param}")
 
         print(f"\nBest dwt parameters:")
-        for name, param in zip(dwtResultsList[0], dwtResultsList[1]):
+        for name, param in zip(dwtResultsList[-1], dwtResultsList[1]):
             print(f"{name} : {param}")
         
         print(f"\nBest adap parameters:")
-        for name, param in zip(adapResultsList[0], adapResultsList[1]):
+        for name, param in zip(adapResultsList[-1], adapResultsList[1]):
             print(f"{name} : {param}")
         
 
