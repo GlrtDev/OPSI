@@ -104,11 +104,12 @@ class Scheduler:
 
         if algorithm == 1:
             learningRate = self.guiHandler.getParam("KROK ADAPTACJI")
-
+            taps = self.guiHandler.getParam("TAPS NUMBER")
             denoisedSignal = self.adaptiveFilter.denoise(
                 x=noisedSignal,
                 mu=learningRate,
-                d=noise)  # ??????????????????
+                d=noise,
+                n=int(taps))  # ??????????????????
 
         if algorithm in [2, 3, 4]:
             self.emd.setStopConditions(fixe=self.guiHandler.getParam("FIXE"))
@@ -195,6 +196,7 @@ class Scheduler:
         # nothing of value will come if more than one signal is analyzed at a time
         for signal in signals:
             noise, SNR = self.generateNoise(signal, noiseType=0, noiseStrength=0.05)
+            noiseSample, SNR2 = self.generateNoise(signal, noiseType=0, noiseStrength=0.05)
             noisedSignal = self.addSignals(signal, noise)
             
             for mode in [0,1,2]:
@@ -228,7 +230,7 @@ class Scheduler:
                             denoisedSignal = self.adaptiveFilter.denoise(
                                 x=noisedSignal,
                                 mu=learningRate,
-                                d=noise,
+                                d=noiseSample,
                                 n=filterTap.item())
                             print(f"{i}/{maxIterationsAdap} {j + i}/{maxIterationsForSample}")
                             row = [SNR, filterTap, learningRate, 

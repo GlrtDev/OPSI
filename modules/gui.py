@@ -74,6 +74,7 @@ class Gui:
             dict(name='FIXE', type='int', readonly=False, value=2),
             dict(name='HARD THRESHOLDING', type='bool', readonly=False, value=False),
             dict(name='KROK ADAPTACJI', type='float', readonly=False, value=0.1),
+            dict(name='TAPS NUMBER', type='int', readonly=False, value=2),
             ]
 
         algorithmList = Parameter.create(name='ALGORYTM', type='list')
