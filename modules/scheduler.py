@@ -2,6 +2,8 @@ from distutils.log import error
 from itertools import count
 import numpy as np
 import csv
+import wfdb
+
 from modules.emd import SchedulerEMD
 from modules.dataLoader import DataLoader
 from modules.gui import Gui
@@ -27,6 +29,7 @@ class Scheduler:
         mean = 0
         std = 1
         num_samples = signal.shape[0]  # idk if correct size is taken
+        print("signal shape", signal.shape)
 
         noise = np.zeros(signal.shape)
         signalPtP = np.ptp(signal, axis=0)[1]
@@ -37,6 +40,7 @@ class Scheduler:
 
         if noiseType in [0, 3, 4]:
             whiteNoisePower = 1
+            print("signalptp", signalPtP.shape)
             whiteNoise = signalPtP * whiteNoisePower * np.random.normal(mean, std, size=num_samples) * noiseStrength
             whiteNoisePower = np.sqrt(np.mean(whiteNoise ** 2))
             noise[:, -1] += np.transpose(whiteNoise)
@@ -72,7 +76,10 @@ class Scheduler:
             return noise, SNR
 
     def run(self):
-        signal = self.dataLoader.load("samples/emg_healthy.txt")
+        signal = wfdb.rdsamp('samples/emg_healthy', channels=[0])
+
+        print(signal)
+
         denoisedSignal = [np.zeros(10), np.zeros(10)]
 
         # "FALKI": 0
@@ -90,7 +97,7 @@ class Scheduler:
         # float
         noiseStrength = self.guiHandler.getParam("NOISE STRENGTH")
 
-        # indeks probki, int # TODO is it needed?
+        # indeks próbki, int
         sampleIndex = self.guiHandler.getParam("INDEKS PROBKI")
 
         noise = self.generateNoise(signal, noiseType=noiseType, noiseStrength=noiseStrength)
@@ -141,7 +148,7 @@ class Scheduler:
                 IFMs=IFMsBW
             )
 
-        self.guiHandler.updatePlot([signal, noisedSignal, denoisedSignal])
+        self.guiHandler.updatePlot([signal[:, -1], noisedSignal[:, -1], denoisedSignal[:, -1]])
         # PLIFrequencies=[50, 100, 150, 200, 250, 300]
 
     def runCmd(self):
@@ -151,45 +158,45 @@ class Scheduler:
             signals.append(self.dataLoader.load(file))
         print("CMD START")
 
-        #EMD csv file creation
+        # EMD csv file creation
         f1 = open('emd.csv', 'w', newline="")
         writerEmd = csv.writer(f1)
         headerEmd = ['SNR', 'mode', 'fixe', 'hardThresholding', 'varLevelActivation', 'omega 0', 'M', 'error']
         writerEmd.writerow(headerEmd)
 
-        #EMD parameters initialization
+        # EMD parameters initialization
         fixeRange = range(2, 10, 1)
         thresholdRange = [True, False]
-        varActivRange = np.arange(0.01, 0.011, 0.001)
+        varActiveRange = np.arange(0.01, 0.011, 0.001)
         omega0Range = np.arange(10, 100, 10)
         MRange = np.arange(1, 1.01, 0.05)
-        maxIterationsEmd = len(fixeRange) * len(thresholdRange) * varActivRange.size * omega0Range.size * MRange.size - 1
+        maxIterationsEmd = len(fixeRange) * len(
+            thresholdRange) * varActiveRange.size * omega0Range.size * MRange.size - 1
 
-        #DWT csv file creation
+        # DWT csv file creation
         f2 = open('dwt.csv', 'w', newline="")
         writerDwt = csv.writer(f2)
         headerDwt = ['SNR', 'decomposition level', 'wavelets', 'error']
         writerDwt.writerow(headerDwt)
 
-        #DWT parameters initialization
+        # DWT parameters initialization
         decompositionLevels = np.arange(1, 10, 1)
-        wavelets = ['bior1.1','bior1.3','bior3.3','coif2','coif6','coif10','db2','db4','db6', 'db8']
+        wavelets = ['bior1.1', 'bior1.3', 'bior3.3', 'coif2', 'coif6', 'coif10', 'db2', 'db4', 'db6', 'db8']
         maxIterationsDwt = len(wavelets) * decompositionLevels.size - 1
 
-        #Adaptative csv file creation
-        f3 = open('adaptative.csv', 'w', newline="")
+        # Adaptive csv file creation
+        f3 = open('adaptive.csv', 'w', newline="")
         writerAdap = csv.writer(f3)
-        headerAdap = ['SNR', 'number of filter taps', 'learning rate' , 'error']
+        headerAdap = ['SNR', 'number of filter taps', 'learning rate', 'error']
         writerAdap.writerow(headerAdap)
 
-        #Adaptative parameters initialization
+        # Adaptive parameters initialization
         filterTaps = np.arange(2, 5, 1, dtype=int)
         learningRates = np.logspace(-5, -1, num=10)
         maxIterationsAdap = filterTaps.size * learningRates.size - 1
 
         maxIterationsForSample = maxIterationsDwt + maxIterationsEmd + maxIterationsAdap + 2
 
-        
         i = 0
         j = 0
 
@@ -198,14 +205,14 @@ class Scheduler:
             noise, SNR = self.generateNoise(signal, noiseType=0, noiseStrength=0.05)
             noiseSample, SNR2 = self.generateNoise(signal, noiseType=0, noiseStrength=0.05)
             noisedSignal = self.addSignals(signal, noise)
-            
-            for mode in [0,1,2]:
+
+            for mode in [0, 1, 2]:
                 if mode == 2:
                     j += i
                     i = 0
                     for fixe in fixeRange:
                         for hardThresholding in thresholdRange:
-                            for varLevelActivation in varActivRange:
+                            for varLevelActivation in varActiveRange:
                                 for omega0 in omega0Range:
                                     for M in MRange:
                                         denoisedSignal = self.emd.denoise(
@@ -219,7 +226,7 @@ class Scheduler:
                                         )
                                         print(f"{i}/{maxIterationsEmd} {j + i}/{maxIterationsForSample}")
                                         row = [SNR, mode, fixe, hardThresholding, varLevelActivation, omega0, M,
-                                            self.countError(signal, denoisedSignal)]
+                                               self.countError(signal, denoisedSignal)]
                                         writerEmd.writerow(row)
                                         i += 1
                 if mode == 1:
@@ -233,8 +240,8 @@ class Scheduler:
                                 d=noiseSample,
                                 n=filterTap.item())
                             print(f"{i}/{maxIterationsAdap} {j + i}/{maxIterationsForSample}")
-                            row = [SNR, filterTap, learningRate, 
-                                            self.countError(signal, denoisedSignal)]
+                            row = [SNR, filterTap, learningRate,
+                                   self.countError(signal, denoisedSignal)]
                             writerAdap.writerow(row)
                             i += 1
 
@@ -245,12 +252,10 @@ class Scheduler:
                         for level in decompositionLevels:
                             denoisedSignal = self.dwt.denoise(signal=noisedSignal, wavelet=wavelet, level=level)
                             print(f"{i}/{maxIterationsDwt} {j + i}/{maxIterationsForSample}")
-                            row = [SNR, level, wavelet, 
-                                            self.countError(signal, denoisedSignal)]
+                            row = [SNR, level, wavelet,
+                                   self.countError(signal, denoisedSignal)]
                             writerDwt.writerow(row)
                             i += 1
-
-        
 
         f1.close()
         f2.close()
@@ -258,7 +263,7 @@ class Scheduler:
 
         f1 = open('emd.csv', 'r', newline="")
         f2 = open('dwt.csv', 'r', newline="")
-        f3 = open('adaptative.csv', 'r', newline="")
+        f3 = open('adaptive.csv', 'r', newline="")
 
         emdCsv = csv.reader(f1)
         emdResultsList = sorted(emdCsv, key=lambda row: row[6], reverse=False)
@@ -275,12 +280,10 @@ class Scheduler:
         print(f"\nBest dwt parameters:")
         for name, param in zip(dwtResultsList[-1], dwtResultsList[1]):
             print(f"{name} : {param}")
-        
+
         print(f"\nBest adap parameters:")
         for name, param in zip(adapResultsList[-1], adapResultsList[1]):
             print(f"{name} : {param}")
-        
-
 
         f1.close()
         f2.close()
