@@ -114,11 +114,11 @@ class Scheduler:
         if algorithm == 1:
             learningRate = self.guiHandler.getParam("KROK ADAPTACJI")
             taps = self.guiHandler.getParam("TAPS NUMBER")
-            denoisedSignal = self.adaptiveFilter.denoise(
+            denoisedSignal = self.adaptiveFilter.denoiseLMS(
                 x=noisedSignal,
                 mu=learningRate,
                 d=noiseSampleForAdaptative,
-                n=int(taps))  # ??????????????????
+                n=int(taps))  
 
         if algorithm in [2, 3, 4]:
             self.emd.setStopConditions(fixe=self.guiHandler.getParam("FIXE"))
@@ -236,7 +236,7 @@ class Scheduler:
                     i = 0
                     for learningRate in learningRates:
                         for filterTap in filterTaps:
-                            denoisedSignal = self.adaptiveFilter.denoise(
+                            denoisedSignal = self.adaptiveFilter.denoiseLMS(
                                 x=noisedSignal,
                                 mu=learningRate,
                                 d=noiseSample,
