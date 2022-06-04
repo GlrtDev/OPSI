@@ -76,9 +76,10 @@ class Scheduler:
             return noise, SNR
 
     def run(self):
-        signal = wfdb.rdsamp('samples/emg_healthy', channels=[0])
+        signal = self.dataLoader.load("samples/emg_healthy")
 
         print(signal)
+        print(signal.shape)
 
         denoisedSignal = [np.zeros(10), np.zeros(10)]
 
@@ -101,6 +102,7 @@ class Scheduler:
         sampleIndex = self.guiHandler.getParam("INDEKS PROBKI")
 
         noise = self.generateNoise(signal, noiseType=noiseType, noiseStrength=noiseStrength)
+        noiseSampleForAdaptative = self.generateNoise(signal, noiseType=noiseType, noiseStrength=noiseStrength)
         noisedSignal = self.addSignals(signal, noise)
 
         if algorithm == 0:
@@ -115,7 +117,7 @@ class Scheduler:
             denoisedSignal = self.adaptiveFilter.denoise(
                 x=noisedSignal,
                 mu=learningRate,
-                d=noise,
+                d=noiseSampleForAdaptative,
                 n=int(taps))  # ??????????????????
 
         if algorithm in [2, 3, 4]:
@@ -148,11 +150,11 @@ class Scheduler:
                 IFMs=IFMsBW
             )
 
-        self.guiHandler.updatePlot([signal[:, -1], noisedSignal[:, -1], denoisedSignal[:, -1]])
+        self.guiHandler.updatePlot([signal, noisedSignal, denoisedSignal])
         # PLIFrequencies=[50, 100, 150, 200, 250, 300]
 
     def runCmd(self):
-        listOfFiles = ["samples/emg_healthy.txt"]
+        listOfFiles = ["samples/emg_healthy"]
         signals = list()
         for file in listOfFiles:
             signals.append(self.dataLoader.load(file))

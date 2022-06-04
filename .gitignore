@@ -6,3 +6,4 @@ Wavelet-Based.pdf
 filtr weiner.pdf
 samples/emg_healthy.txt
 .venv
+*.pyc
