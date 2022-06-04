@@ -44,7 +44,6 @@ class SchedulerEMD:
 
     def decomposeAndGetIMFs(self, signal, mode=2, verbose=False):
         self.sampleFreq = np.floor(1/signal[1][0])
-        print(f"self.sampleFreq = {self.sampleFreq}")
         if mode == 2:
             IFMs = self.emd.emd(signal[0], signal[1], max_imf=9)
             self.visualisation = Visualisation(self.emd)

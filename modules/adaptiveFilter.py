@@ -17,18 +17,19 @@ class AdaptiveFilterLMS:
         # f = pa.filters.FilterLMS(n=len(x[0]), mu=mu, w="random")
         
         newX = pa.input_from_history(a=x[:,1],n=n)[:-1]
-        print(newX)
-        print(x)
+        #print(newX)
+        #print(x)
         f = pa.filters.FilterLMS(n=n, mu=mu)
 
         d = np.copy(x)[n:,1]
-        print(f"d.shape = {d}")
-        print(f"newX.shape = {newX}")
+        #print(f"d.shape = {d}")
+        #print(f"newX.shape = {newX}")
         y, e, w = f.run(d, newX)
-        print(f"y.shape = {y.shape}")
-        signalDenoised = np.copy(x[n:])
+        #print(f"y.shape = {y.shape}")
+        signalDenoised = np.copy(x[:])
 
-        signalDenoised[:,-1] = np.copy(y)
+        signalDenoised[:,-1] = np.append(y,[0 for i in range(n)])
+
 
         return signalDenoised
 
