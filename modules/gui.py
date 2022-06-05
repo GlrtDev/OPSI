@@ -109,7 +109,7 @@ class Gui:
         self.param = Parameter.create(name='', type='group', children=paramspec)
         self.param.addChild(algorithmList)
         self.param.addChild(fuzzList)
-        # TODO SHOW WAVELET PARAMS ONLY WHEN DWT METHOD IS CHOSEN
+
         self.param.addChild(waveletsList)
         self.param.addChild(decompositionLevelParam)
 

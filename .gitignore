@@ -1,9 +1,11 @@
 .vscode/launch.json
 __pycache__/gui.cpython-310.pyc
-samples/emg_healthy.dat
+samples/
+adaptive.csv
+dwt.csv
+emd.csv
 model AR.pdf
 Wavelet-Based.pdf
 filtr weiner.pdf
-samples/emg_healthy.txt
 .venv
 *.pyc
