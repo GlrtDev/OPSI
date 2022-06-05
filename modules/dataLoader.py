@@ -22,6 +22,6 @@ class DataLoader:
         data = np.append(freqs, data, axis=1)
         data = data[1:]
         data[:,-1] = np.nan_to_num(data[:,-1])
-        data[:,-1] = np.true_divide(data[:,-1], 2.521)
+        data[:,-1] = np.true_divide(data[:,-1], (1000000/96.9408))
 
         return data
