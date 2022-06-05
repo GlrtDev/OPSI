@@ -78,9 +78,6 @@ class Scheduler:
     def run(self):
         signal = self.dataLoader.load("samples/emg_healthy")
 
-        print(signal)
-        print(signal.shape)
-
         denoisedSignal = [np.zeros(10), np.zeros(10)]
 
         # "FALKI": 0
@@ -170,8 +167,8 @@ class Scheduler:
         fixeRange = range(2, 10, 1)
         thresholdRange = [True, False]
         varActiveRange = np.arange(0.01, 0.011, 0.001)
-        omega0Range = np.arange(10, 100, 10)
-        MRange = np.arange(1, 1.01, 0.05)
+        omega0Range = np.arange(10, 100, 20)
+        MRange = np.arange(1.01, 1.05, 0.01)
         maxIterationsEmd = len(fixeRange) * len(
             thresholdRange) * varActiveRange.size * omega0Range.size * MRange.size - 1
 
@@ -194,7 +191,7 @@ class Scheduler:
 
         # Adaptive parameters initialization
         filterTaps = np.arange(2, 5, 1, dtype=int)
-        learningRates = np.logspace(-5, -1, num=10)
+        learningRates = np.logspace(-5, 0, num=10)
         maxIterationsAdap = filterTaps.size * learningRates.size - 1
 
         maxIterationsForSample = maxIterationsDwt + maxIterationsEmd + maxIterationsAdap + 2
@@ -291,6 +288,7 @@ class Scheduler:
         f2.close()
         f3.close()
 
+    #MSE
     @staticmethod
     def countError(originalSignal, denoisedSignal, mode=2):
         if mode == 2:
