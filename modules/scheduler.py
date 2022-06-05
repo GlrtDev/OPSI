@@ -29,7 +29,6 @@ class Scheduler:
         mean = 0
         std = 1
         num_samples = signal.shape[0]  # idk if correct size is taken
-        print("signal shape", signal.shape)
 
         noise = np.zeros(signal.shape)
         signalPtP = np.ptp(signal, axis=0)[1]
@@ -40,7 +39,6 @@ class Scheduler:
 
         if noiseType in [0, 3, 4]:
             whiteNoisePower = 1
-            print("signalptp", signalPtP.shape)
             whiteNoise = signalPtP * whiteNoisePower * np.random.normal(mean, std, size=num_samples) * noiseStrength
             whiteNoisePower = np.sqrt(np.mean(whiteNoise ** 2))
             noise[:, -1] += np.transpose(whiteNoise)
@@ -99,7 +97,7 @@ class Scheduler:
         sampleIndex = self.guiHandler.getParam("INDEKS PROBKI")
 
         noise = self.generateNoise(signal, noiseType=noiseType, noiseStrength=noiseStrength)
-        noiseSampleForAdaptative = self.generateNoise(signal, noiseType=noiseType, noiseStrength=noiseStrength)
+        noiseSampleForAdaptive = self.generateNoise(signal, noiseType=noiseType, noiseStrength=noiseStrength)
         noisedSignal = self.addSignals(signal, noise)
 
         if algorithm == 0:
@@ -114,8 +112,8 @@ class Scheduler:
             denoisedSignal = self.adaptiveFilter.denoiseLMS(
                 x=noisedSignal,
                 mu=learningRate,
-                d=noiseSampleForAdaptative,
-                n=int(taps))  
+                d=noiseSampleForAdaptive,
+                n=int(taps))
 
         if algorithm in [2, 3, 4]:
             self.emd.setStopConditions(fixe=self.guiHandler.getParam("FIXE"))
@@ -288,7 +286,7 @@ class Scheduler:
         f2.close()
         f3.close()
 
-    #MSE
+    # MSE
     @staticmethod
     def countError(originalSignal, denoisedSignal, mode=2):
         if mode == 2:
