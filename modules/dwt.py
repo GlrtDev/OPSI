@@ -25,6 +25,7 @@ class DWT:
         # Reconstruct the signal using the thresholded coefficients
         denoisedValues = pywt.waverec(coeff, wavelet, mode='per')
         denoisedSignal = np.copy(signal)
+
         denoisedSignal[:,-1] = denoisedValues[:-1]
 
         return denoisedSignal

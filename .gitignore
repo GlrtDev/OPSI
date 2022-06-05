@@ -7,3 +7,15 @@ filtr weiner.pdf
 samples/emg_healthy.txt
 .venv
 *.pyc
+adaptive.csv
+dwt.csv
+emd.csv
+samples/emg_healthy.hea
+samples/S4.dat
+samples/S4.hea
+samples/S5.dat
+samples/S5.hea
+samples/S6.dat
+samples/S6.hea
+samples/S7.dat
+samples/S7.hea

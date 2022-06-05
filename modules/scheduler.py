@@ -76,7 +76,7 @@ class Scheduler:
             return noise, SNR
 
     def run(self):
-        signal = self.dataLoader.load("samples/emg_healthy")
+        signal = self.dataLoader.load("samples/S7")
 
         denoisedSignal = [np.zeros(10), np.zeros(10)]
 
@@ -166,9 +166,9 @@ class Scheduler:
         # EMD parameters initialization
         fixeRange = range(2, 10, 1)
         thresholdRange = [True, False]
-        varActiveRange = np.arange(0.01, 0.011, 0.001)
-        omega0Range = np.arange(10, 100, 20)
-        MRange = np.arange(1.01, 1.05, 0.01)
+        varActiveRange = np.arange(0.01, 0.011, 0.003)
+        omega0Range = np.arange(10, 70, 20)
+        MRange = np.arange(1.01, 1.05, 0.04)
         maxIterationsEmd = len(fixeRange) * len(
             thresholdRange) * varActiveRange.size * omega0Range.size * MRange.size - 1
 
@@ -191,7 +191,7 @@ class Scheduler:
 
         # Adaptive parameters initialization
         filterTaps = np.arange(2, 5, 1, dtype=int)
-        learningRates = np.logspace(-5, 0, num=10)
+        learningRates = np.logspace(-2, 0, num=10)
         maxIterationsAdap = filterTaps.size * learningRates.size - 1
 
         maxIterationsForSample = maxIterationsDwt + maxIterationsEmd + maxIterationsAdap + 2
@@ -201,8 +201,8 @@ class Scheduler:
 
         # nothing of value will come if more than one signal is analyzed at a time
         for signal in signals:
-            noise, SNR = self.generateNoise(signal, noiseType=0, noiseStrength=0.05)
-            noiseSample, SNR2 = self.generateNoise(signal, noiseType=0, noiseStrength=0.05)
+            noise, SNR = self.generateNoise(signal, noiseType=0, noiseStrength=0.03)
+            noiseSample, SNR2 = self.generateNoise(signal, noiseType=0, noiseStrength=0.03)
             noisedSignal = self.addSignals(signal, noise)
 
             for mode in [0, 1, 2]:
