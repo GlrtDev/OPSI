@@ -32,15 +32,14 @@ class Scheduler:
 
         noise = np.zeros(signal.shape)
         signalPtP = np.ptp(signal, axis=0)[1]
-        signalPower = np.sqrt(np.mean(signal[:, -1] ** 2))
+        signalPower = np.mean(signal[:, -1] ** 2)
         noise[:, 0] = np.copy(signal[:, 0])
         whiteNoisePower = 0
         PLINoisePower = 0
 
         if noiseType in [0, 3, 4]:
-            whiteNoisePower = 1
-            whiteNoise = signalPtP * whiteNoisePower * np.random.normal(mean, std, size=num_samples) * noiseStrength
-            whiteNoisePower = np.sqrt(np.mean(whiteNoise ** 2))
+            whiteNoise = signalPtP * np.random.normal(mean, std, size=num_samples) * noiseStrength
+            whiteNoisePower = np.mean(whiteNoise ** 2)
             noise[:, -1] += np.transpose(whiteNoise)
 
         frequencyNoise = np.zeros(num_samples)
@@ -65,16 +64,16 @@ class Scheduler:
                 freq * 2 * np.pi * noise[:, 0]) * noiseStrength
         noise[:, -1] += np.transpose(frequencyNoise)
 
-        PLINoisePower = np.sqrt(np.mean(frequencyNoise ** 2))  # TODO RMS is really needed ?
+        PLINoisePower = np.mean(frequencyNoise ** 2)  # TODO RMS is really needed ?
         if self.mode == 0:
-            self.guiHandler.setParam("SNR", (signalPower ** 2) / (whiteNoisePower + PLINoisePower) ** 2)
+            self.guiHandler.setParam("SNR", (signalPower) / ((whiteNoisePower + PLINoisePower)))
             return noise
         else:
-            SNR = (signalPower ** 2) / (whiteNoisePower + PLINoisePower) ** 2
+            SNR = (signalPower) / ((whiteNoisePower + PLINoisePower) )
             return noise, SNR
 
     def run(self):
-        signal = self.dataLoader.load("samples/S7")
+        signal = self.dataLoader.load("samples/S6")
 
         denoisedSignal = [np.zeros(10), np.zeros(10)]
 
@@ -120,24 +119,24 @@ class Scheduler:
             IFMs = self.emd.decomposeAndGetIMFs(
                 signal=[noisedSignal[:, 1], noisedSignal[:, 0]],
                 mode=algorithm,
-                verbose=True
+                verbose=False
             )
 
             IFMsPLI = self.emd.removePLIFromIFMs(
                 IFMs,
-                verbose=True
+                verbose=False
             )
 
             IFMsWN = self.emd.removeWhiteNoiseFromIFMs(
                 IFMsPLI,
                 hardThresholding=self.guiHandler.getParam("HARD THRESHOLDING"),
                 intervalThresholding=self.guiHandler.getParam("EMD-IT"),
-                verbose=True
+                verbose=False
             )
 
             IFMsBW = self.emd.removeBaselineWanderFromIFMs(
                 IFMsWN,
-                verbose=True
+                verbose=False
             )
 
             denoisedSignal = self.emd.parseIFMsToSignal(
@@ -149,7 +148,7 @@ class Scheduler:
         # PLIFrequencies=[50, 100, 150, 200, 250, 300]
 
     def runCmd(self):
-        listOfFiles = ["samples/emg_healthy"]
+        listOfFiles = ["samples/S6"]
         signals = list()
         for file in listOfFiles:
             signals.append(self.dataLoader.load(file))
@@ -188,8 +187,8 @@ class Scheduler:
         writerAdap.writerow(headerAdap)
 
         # Adaptive parameters initialization
-        filterTaps = np.arange(2, 5, 1, dtype=int)
-        learningRates = np.logspace(-2, 0, num=10)
+        filterTaps = np.arange(2, 11, 2, dtype=int)
+        learningRates = np.logspace(-3, -1, num=10)
         maxIterationsAdap = filterTaps.size * learningRates.size - 1
 
         maxIterationsForSample = maxIterationsDwt + maxIterationsEmd + maxIterationsAdap + 2
@@ -199,8 +198,8 @@ class Scheduler:
 
         # nothing of value will come if more than one signal is analyzed at a time
         for signal in signals:
-            noise, SNR = self.generateNoise(signal, noiseType=0, noiseStrength=0.03)
-            noiseSample, SNR2 = self.generateNoise(signal, noiseType=0, noiseStrength=0.03)
+            noise, SNR = self.generateNoise(signal, noiseType=0, noiseStrength=0.2)
+            noiseSample, SNR2 = self.generateNoise(signal, noiseType=0, noiseStrength=0.2)
             noisedSignal = self.addSignals(signal, noise)
 
             for mode in [0, 1, 2]:

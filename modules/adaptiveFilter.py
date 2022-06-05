@@ -27,7 +27,7 @@ class AdaptiveFilterLMS:
         signalDenoised = np.copy(x[:])
 
         signalDenoised[:, -1] = np.append(y, [0 for i in range(n)])
-
+        # signalDenoised[:,-1] = np.nan_to_num(signalDenoised[:,-1])
         return signalDenoised
 
     @staticmethod
@@ -46,5 +46,5 @@ class AdaptiveFilterLMS:
 
         signalDenoised = np.copy(x)
         signalDenoised[:, -1] -= np.append(y, [0 for i in range(n - 1)])
-
+        
         return signalDenoised

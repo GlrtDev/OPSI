@@ -87,6 +87,7 @@ class SchedulerEMD:
         for IFM in IFMs:
             noiseLevel = np.median(abs(IFM)) / 0.6745
             threshold = noiseLevel * np.sqrt(2 * np.log(IFM.shape[0]))
+            # not used, pywt does automatic threshold
             if intervalThresholding:
                 zero_crossings = np.where(np.diff(np.sign(IFM)))[0]
                 IFMSplitted = np.hsplit(IFM, zero_crossings)
@@ -101,7 +102,7 @@ class SchedulerEMD:
             else:
                 if hardThresholding:
                     # IFMsFiltered[i] = pywt.threshold(IFM, threshold,'hard')
-                    IFMsFiltered[i] = (abs(IFM) > threshold) * IFM
+                    IFMsFiltered[i] = pywt.threshold(IFM, threshold, 'hard')
                 elif not hardThresholding:
                     IFMsFiltered[i] = pywt.threshold(IFM, threshold, 'soft')
             i += 1

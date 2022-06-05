@@ -39,7 +39,7 @@ class Gui:
             print(f"error {e} occurred while loading state")
 
     def plotConf(self):
-        labels = {'left': "U [mV]", 'bottom': "time [ms]"}
+        labels = {'left': "U [V]", 'bottom': "time [s]"}
         self.topPlot = self.win.addPlot(title="sygnał oryginalny", labels=labels, row=1, col=0)
         self.middlePlot = self.win.addPlot(title="sygnał zaszumiony", labels=labels, row=2, col=0)
         self.bottomPlot = self.win.addPlot(title="sygnał odszumiony", labels=labels, row=3, col=0)

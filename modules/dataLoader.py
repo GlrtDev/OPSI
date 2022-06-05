@@ -12,7 +12,7 @@ class DataLoader:
 
     @staticmethod
     def load(path):
-        data, attr = wfdb.rdsamp(path, channels=[0])
+        data, attr = wfdb.rdsamp(path, channels=[2])
         n = len(data)
 
         f_sampling = attr["fs"]
@@ -21,5 +21,7 @@ class DataLoader:
 
         data = np.append(freqs, data, axis=1)
         data = data[1:]
+        data[:,-1] = np.nan_to_num(data[:,-1])
+        data[:,-1] = np.true_divide(data[:,-1], 2.521)
 
         return data

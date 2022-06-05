@@ -26,6 +26,6 @@ class DWT:
         denoisedValues = pywt.waverec(coeff, wavelet, mode='per')
         denoisedSignal = np.copy(signal)
 
-        denoisedSignal[:,-1] = denoisedValues[:-1]
+        denoisedSignal[:,-1] = denoisedValues
 
         return denoisedSignal
